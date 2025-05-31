@@ -37,6 +37,10 @@ Simple neural network implementation for MNIST digit classification, built from 
    ```bash
    streamlit run app.py
    ```
+   or
+   ```bash
+   python -m streamlit run app.py
+   ```
 
    Draw digits and see predictions in your browser.
 
