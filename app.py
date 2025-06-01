@@ -15,22 +15,48 @@ st.title("Digit Classifier Neural Network")
 CANVAS_SIZE = 280
 DIGIT_SIZE = 28
 
+image_result = None
+
+st.markdown("### Input")
+st.markdown("##### Upload an image or draw a digit")
+
 # Layout: Make columns equal width for equal sized displays
 left_col, right_col = st.columns([1, 1])
 
-with left_col:
-    st.markdown("#### Input")
-    canvas_result = st_canvas(
-        fill_color="#FFFFFF",
-        stroke_width=18,
-        stroke_color="#FFFFFF",
-        background_color="#000000",
-        height=CANVAS_SIZE,
-        width=CANVAS_SIZE,
-        drawing_mode="freedraw",
-        key="canvas",
-        update_streamlit=True,
-    )
+with right_col:
+    uploaded_file = st.file_uploader("Choose an image...", type=["png", "jpg", "jpeg"])
+    if uploaded_file is not None:
+        # Read the image file
+        image = Image.open(uploaded_file)
+        # Convert to RGBA if not already
+        if image.mode != 'RGBA':
+            image = image.convert('RGBA')
+        # Resize to match canvas size
+        image = image.resize((CANVAS_SIZE, CANVAS_SIZE))
+        # Display the uploaded image
+        with left_col:
+            st.image(image, caption="Uploaded Image", use_container_width=True)
+            # Toogle inverse colors
+            if st.checkbox("Invert colors"):
+                image = Image.eval(image, lambda x: 255 - x)
+        # Convert to numpy array
+        image_result = np.array(image)
+    else:
+        with left_col:
+            canvas_result = st_canvas(
+                fill_color="#FFFFFF",
+                stroke_width=18,
+                stroke_color="#FFFFFF",
+                background_color="#000000",
+                height=CANVAS_SIZE,
+                width=CANVAS_SIZE,
+                drawing_mode="freedraw",
+                key="canvas",
+                update_streamlit=True,
+            )
+            if canvas_result.image_data is not None:
+                image_result = canvas_result.image_data.astype(np.uint8)
+
 
 # Helper: crop + center like MNIST
 def crop_and_center(img):
@@ -50,8 +76,8 @@ def crop_and_center(img):
 
 # Prediction
 if st.button("Check digit"):
-    if canvas_result.image_data is not None:
-        rgba = canvas_result.image_data.astype(np.uint8)
+    if image_result is not None:
+        rgba = image_result
         gray = cv2.cvtColor(rgba, cv2.COLOR_RGBA2GRAY)
 
         # Preprocess
@@ -60,13 +86,12 @@ if st.button("Check digit"):
         output = net.feedforward(input_vector)
         prediction = int(np.argmax(output))
 
-        with right_col:
-            st.markdown("#### Processed (28×28)")
-            # Convert processed image to a displayable format and resize to match canvas
-            display_img = (processed * 255).astype(np.uint8)
-            # Resize to match the canvas size
-            display_img = cv2.resize(display_img, (CANVAS_SIZE, CANVAS_SIZE), interpolation=cv2.INTER_NEAREST)
-            st.image(display_img, width=CANVAS_SIZE, channels="GRAY")
+        st.markdown("### Processed (28×28)")
+        # Convert processed image to a displayable format and resize to match canvas
+        display_img = (processed * 255).astype(np.uint8)
+        # Resize to match the canvas size
+        display_img = cv2.resize(display_img, (CANVAS_SIZE, CANVAS_SIZE), interpolation=cv2.INTER_NEAREST)
+        st.image(display_img, width=CANVAS_SIZE, channels="GRAY")
 
         # Results
         st.markdown(f"### 🔍 Prediction: **{prediction}**")
